@@ -43,7 +43,7 @@ class CookingBook:
             self.book[category] = {}
             self.__write_book(self.book)
             logging.info(f'create category {category}')
-            return self.response(True, 'Категория создана')
+            return self.response(True, f'Категория "{category}" создана')
         else:
             logging.error(f'cannot create category {category}')
             return self.response(False, 'Категория с таким название уже существует')
@@ -61,7 +61,7 @@ class CookingBook:
             self.book.pop(category)
             self.__write_book(self.book)
             logging.info(f'del category {category}')
-            return self.response(True, 'Категория удалена')
+            return self.response(True, f'Категория "{category}" удалена')
         except KeyError:
             logging.exception(f'cannot del category {category}')
             return self.response(False, 'Такой категории не существует')
@@ -73,7 +73,7 @@ class CookingBook:
                 self.book[new_name] = old_category
                 self.__write_book(self.book)
                 logging.info(f'rename category {old_name} to {new_name}')
-                return self.response(True, 'Категория переименована')
+                return self.response(True, f'Категория "{old_name}" переименована в "{new_name}"')
             else:
                 logging.error(f'cannot rename category {old_name} to {new_name}.{new_name} exists ')
                 return self.response(False, f'Категория с именем {new_name} уже существует')
@@ -88,7 +88,7 @@ class CookingBook:
             self.book[category][title] = text
             self.__write_book(self.book)
             logging.info(f'add recipe {title} to category {category}')
-            return self.response(True, 'Рецепт добавлен')
+            return self.response(True, f'Рецепт "{title}" добавлен')
         else:
             return self.response(False, 'Рецепт с таким названием уже существует')
 
@@ -108,7 +108,7 @@ class CookingBook:
             if len(recipes) != 0:
                 return self.response(True, recipes)
             else:
-                return self.response(False, 'Рецпетов в категории нет')
+                return self.response(False, 'Тут пока нет рецептов')
         except KeyError:
             logging.exception(f'cannot get recipes from category {category}')
             return self.response(False, 'Такой категории не существует')
