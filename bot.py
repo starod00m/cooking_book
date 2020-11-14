@@ -46,6 +46,23 @@ def add_category(msg):
     bot.send_message(user_id, 'Введи название категории', reply_markup=markup)
     bot.register_next_step_handler(msg, __add_category)
 
+def rename_category(msg, category):
+
+    def __rename_category(msg, category):
+        user_id, username = get_user_data(msg)
+        markup = types.InlineKeyboardMarkup(2)
+        response = book(user_id, username).rename_category(category, msg.text)
+        category = msg.text if response.status else category
+        go_back = types.InlineKeyboardButton(text='----НАЗАД----', callback_data='get_recipes_titles' + ':' + category)
+        markup.add(go_back, go_home)
+        bot.send_message(user_id, response.body, reply_markup=markup)
+
+    user_id, username = get_user_data(msg)
+    markup = types.InlineKeyboardMarkup(1)
+    markup.add(cancel)
+    bot.send_message(user_id, 'Введите новое имя категории', reply_markup=markup)
+    bot.register_next_step_handler(msg, __rename_category, category)
+
 
 def get_recipes(msg, category):
     markup = types.InlineKeyboardMarkup(3)
@@ -54,15 +71,18 @@ def get_recipes(msg, category):
     add_recipe = types.InlineKeyboardButton(text='----ДОБАВИТЬ РЕЦЕПТ----',
                                             callback_data='add_recipe' + ':' + category)
     go_back = types.InlineKeyboardButton(text='----НАЗАД----', callback_data='get_categories')
+    rename = types.InlineKeyboardButton(text='----ПЕРЕИМЕНОВАТЬ----    ', callback_data='rename_category' + ':' + category)
     if response.status:
         for recipe_title in response.body:
             markup.add(types.InlineKeyboardButton(text=recipe_title, callback_data='get_recipe' + ':'
                                                                                    + category + ':' + recipe_title))
         markup.add(add_recipe)
+        markup.add(rename)
         markup.add(go_back, go_home)
         bot.send_message(user_id, f'Рецпты в категории "{category}"', reply_markup=markup)
     else:
         markup.add(add_recipe)
+        markup.add(rename)
         markup.add(go_back, go_home)
         bot.send_message(user_id, response.body, reply_markup=markup)
 
@@ -122,6 +142,10 @@ def routes(call):
 
     elif command == 'add_category':
         add_category(msg)
+
+    elif command == 'rename_category':
+        category = call.data.split(':')[1]
+        rename_category(msg, category)
 
     elif command == 'get_recipes_titles':
         category = call.data.split(':')[1]
