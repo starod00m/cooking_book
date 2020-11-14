@@ -48,19 +48,22 @@ def add_category(msg):
 
 
 def get_recipes(msg, category):
-    markup = types.InlineKeyboardMarkup(2)
+    markup = types.InlineKeyboardMarkup(3)
     user_id, username = get_user_data(msg)
     response = book(user_id, username).get_recipes_titles(category)
     add_recipe = types.InlineKeyboardButton(text='----ДОБАВИТЬ РЕЦЕПТ----',
                                             callback_data='add_recipe' + ':' + category)
+    go_back = types.InlineKeyboardButton(text='----НАЗАД----', callback_data='get_categories')
     if response.status:
         for recipe_title in response.body:
             markup.add(types.InlineKeyboardButton(text=recipe_title, callback_data='get_recipe' + ':'
                                                                                    + category + ':' + recipe_title))
-        markup.add(add_recipe, go_home)
+        markup.add(add_recipe)
+        markup.add(go_back, go_home)
         bot.send_message(user_id, f'Рецпты в категории "{category}"', reply_markup=markup)
     else:
-        markup.add(add_recipe, go_home)
+        markup.add(add_recipe)
+        markup.add(go_back, go_home)
         bot.send_message(user_id, response.body, reply_markup=markup)
 
 
