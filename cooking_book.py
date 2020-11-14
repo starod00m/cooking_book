@@ -19,6 +19,7 @@ def _get_book(path_to_book):
     except FileNotFoundError:
         return {}
 
+
 class CookingBook:
 
     def __init__(self, user_id, username):
@@ -36,6 +37,7 @@ class CookingBook:
             return None
 
     '''Categories'''
+
     def add_category(self, category: str) -> namedtuple:
         if category not in self.book:
             self.book[category] = {}
@@ -53,7 +55,6 @@ class CookingBook:
             return self.response(True, categories)
         else:
             return self.response(False, 'Категорий нет')
-
 
     def del_category(self, category: str) -> namedtuple:
         try:
@@ -81,6 +82,7 @@ class CookingBook:
             return self.response(False, f'Категория с именем {old_name} уже существует')
 
     '''Recipes'''
+
     def add_recipe(self, category, title, text) -> namedtuple:
         if title not in self.book[category]:
             self.book[category][title] = text
