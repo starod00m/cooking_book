@@ -47,7 +47,7 @@ def add_category(msg):
     bot.register_next_step_handler(msg, __add_category)
 
 
-def get_recipies(msg, category):
+def get_recipes(msg, category):
     markup = types.InlineKeyboardMarkup(2)
     user_id, username = get_user_data(msg)
     response = book(user_id, username).get_recipes_titles(category)
@@ -70,7 +70,7 @@ def get_recipe(msg, category, title):
     markup = types.InlineKeyboardMarkup(2)
     go_back = types.InlineKeyboardButton(text='----НАЗАД----', callback_data='get_recipes_titles' + ':' + category)
     markup.add(go_back, go_home)
-    bot.send_message(user_id, title)
+    bot.send_message(user_id, f'*{title}*', parse_mode='Markdown')
     bot.send_message(user_id, response.body, reply_markup=markup)
 
 
@@ -122,7 +122,7 @@ def routes(call):
 
     elif command == 'get_recipes_titles':
         category = call.data.split(':')[1]
-        get_recipies(msg, category)
+        get_recipes(msg, category)
 
     elif command == 'get_recipe':
         category = call.data.split(':')[1]
