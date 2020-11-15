@@ -11,29 +11,43 @@ config.read('env.ini')
 BOOKS = config['DATA']['BOOKS']
 
 
-def _get_book(path_to_book):
-    try:
-        with open(path_to_book, encoding='utf-8') as bf:
-            book = json.load(bf)
-            return book
-    except FileNotFoundError:
-        return {}
-
-
 class CookingBook:
 
     def __init__(self, user_id, username):
         self.user_id = str(user_id)
         self.username = username
         self.path_to_book = BOOKS + self.user_id + '_' + self.username + '.json'
-        self.book = _get_book(self.path_to_book)
+        self.book = self.__get_book(self.path_to_book)
         self.response = namedtuple('response', ['status', 'body'])
         logging.basicConfig(stream=open(f'logs/{self.user_id}_{self.username}.log', 'a', encoding='utf-8'),
                             format='%(asctime)s %(levelname)s:%(message)s', level=logging.INFO)
 
+    def create_book(self):
+        self.__write_book(self.__get_book(self.path_to_book))
+
+
+    def __get_book(self, path_to_book):
+        try:
+            with open(path_to_book, encoding='utf-8') as bf:
+                book = json.load(bf)
+            return book['book']
+        except FileNotFoundError:
+            return {}
+
+    @staticmethod
+    def __get_userfile(path_to_book):
+        try:
+            with open(path_to_book, encoding='utf-8') as bf:
+                userfile = json.load(bf)
+            return userfile
+        except FileNotFoundError:
+            return {"book": {}, "settings": {}}
+
     def __write_book(self, book):
+        userfile = self.__get_userfile(self.path_to_book)
+        userfile['book'] = book
         with open(self.path_to_book, 'w', encoding='utf-8') as bf:
-            json.dump(book, bf, indent=4, ensure_ascii=False)
+            json.dump(userfile, bf, indent=4, ensure_ascii=False)
             return None
 
     '''Categories'''
@@ -52,7 +66,7 @@ class CookingBook:
         categories = [category for category in self.book]
         logging.info(f'get list of categories {categories}')
         if len(categories) != 0:
-            return self.response(True, categories)
+            return self.response(True, sorted(categories))
         else:
             return self.response(False, 'Категорий нет')
 
@@ -106,7 +120,7 @@ class CookingBook:
             recipes = [title for title in self.book[category]]
             logging.info(f'get list of recipes {recipes}')
             if len(recipes) != 0:
-                return self.response(True, recipes)
+                return self.response(True, sorted(recipes))
             else:
                 return self.response(False, 'Тут пока нет рецептов')
         except KeyError:
