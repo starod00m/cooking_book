@@ -2,6 +2,7 @@ import telebot
 from telebot import types
 from cooking_book import CookingBook as book
 from configparser import ConfigParser
+from collections import namedtuple
 
 '''Читаем env.ini'''
 config = ConfigParser()
@@ -16,58 +17,66 @@ go_home = types.InlineKeyboardButton(text='----ДОМОЙ----', callback_data='g
 cancel = types.InlineKeyboardButton(text='----ОТМЕНА----', callback_data='go_home')
 
 
-def get_user_data(msg):
-    return msg.chat.id, msg.chat.username
+def get_user_data(call):
+    user_data = namedtuple('user_data', ['user_id', 'username', 'text', 'call_id', 'message'])
+    try:
+       return user_data(call.from_user.id, call.from_user.username, call.message.text, call.id, call.message)
+    except AttributeError:
+        message = call
+        return user_data(message.from_user.id, message.from_user.username, message.text, None, message)
 
 
-def get_categories(msg):
+def get_categories(call):
+    user_data = get_user_data(call)
     markup = types.InlineKeyboardMarkup(1)
-    user_id, username = get_user_data(msg)
-    response = book(user_id, username).get_categories()
+    response = book(user_data.user_id, user_data.username).get_categories()
     if response.status:
         for category in response.body:
             markup.add(types.InlineKeyboardButton(text=category, callback_data='get_recipes_titles' + ':' + category))
-        bot.send_message(user_id, text="Ваши категории", reply_markup=markup)
+        markup.add(go_home)
+        bot.send_message(user_data.user_id, text="Ваши категории", reply_markup=markup)
     else:
-        bot.send_message(user_id, response.body)
-        home(msg)
+        # markup.add(go_home)
+        # bot.send_message(user_id, f'_{response.body}_', parse_mode='Markdown',reply_markup=markup)
+        bot.answer_callback_query(callback_query_id=user_data.call_id, text=response.body)
+        home(user_data.message)
 
 
-def add_category(msg):
-    def __add_category(msg):
-        user_id, username = get_user_data(msg)
-        response = book(user_id, username).add_category(msg.text)
-        bot.send_message(user_id, response.body)
-        home(msg)
+def add_category(call):
+    def __add_category(call):
+        user_data = get_user_data(call)
+        response = book(user_data.user_id, user_data.username).add_category(user_data.text)
+        bot.send_message(user_data.user_id, response.body)
+        home(user_data.message)
 
-    user_id, username = get_user_data(msg)
+    user_data = get_user_data(call)
     markup = types.InlineKeyboardMarkup(1)
-    markup.add(cancel)
-    bot.send_message(user_id, 'Введи название категории', reply_markup=markup)
-    bot.register_next_step_handler(msg, __add_category)
+    # markup.add(cancel)
+    bot.send_message(user_data.user_id, 'Введи название категории', reply_markup=markup)
+    bot.register_next_step_handler(user_data.message, __add_category)
 
-def rename_category(msg, category):
+def rename_category(call, category):
 
-    def __rename_category(msg, category):
-        user_id, username = get_user_data(msg)
+    def __rename_category(call, category):
+        user_data = get_user_data(call)
         markup = types.InlineKeyboardMarkup(2)
-        response = book(user_id, username).rename_category(category, msg.text)
-        category = msg.text if response.status else category
+        response = book(user_data.user_id, user_data.username).rename_category(category, user_data.text)
+        category = user_data.text if response.status else category
         go_back = types.InlineKeyboardButton(text='----НАЗАД----', callback_data='get_recipes_titles' + ':' + category)
         markup.add(go_back, go_home)
-        bot.send_message(user_id, response.body, reply_markup=markup)
+        bot.send_message(user_data.user_id, response.body, reply_markup=markup)
 
-    user_id, username = get_user_data(msg)
+    user_data = get_user_data(call)
     markup = types.InlineKeyboardMarkup(1)
-    markup.add(cancel)
-    bot.send_message(user_id, 'Введите новое имя категории', reply_markup=markup)
-    bot.register_next_step_handler(msg, __rename_category, category)
+    # markup.add(cancel)
+    bot.send_message(user_data.user_id, 'Введите новое имя категории', reply_markup=markup)
+    bot.register_next_step_handler(user_data.message, __rename_category, category)
 
 
-def get_recipes(msg, category):
+def get_recipes(call, category):
+    user_data = get_user_data(call)
     markup = types.InlineKeyboardMarkup(3)
-    user_id, username = get_user_data(msg)
-    response = book(user_id, username).get_recipes_titles(category)
+    response = book(user_data.user_id, user_data.username).get_recipes_titles(category)
     add_recipe = types.InlineKeyboardButton(text='----ДОБАВИТЬ РЕЦЕПТ----',
                                             callback_data='add_recipe' + ':' + category)
     go_back = types.InlineKeyboardButton(text='----НАЗАД----', callback_data='get_categories')
@@ -79,44 +88,44 @@ def get_recipes(msg, category):
         markup.add(add_recipe)
         markup.add(rename)
         markup.add(go_back, go_home)
-        bot.send_message(user_id, f'Рецпты в категории "{category}"', reply_markup=markup)
+        bot.send_message(user_data.user_id, f'Рецпты в категории "{category}"', reply_markup=markup)
     else:
         markup.add(add_recipe)
         markup.add(rename)
         markup.add(go_back, go_home)
-        bot.send_message(user_id, response.body, reply_markup=markup)
+        bot.send_message(user_data.user_id, f'_{response.body}_',parse_mode='Markdown', reply_markup=markup)
 
 
-def get_recipe(msg, category, title):
-    user_id, username = get_user_data(msg)
-    response = book(user_id, username).get_recipe(category, title)
+def get_recipe(call, category, title):
+    user_data = get_user_data(call)
+    response = book(user_data.user_id, user_data.username).get_recipe(category, title)
     markup = types.InlineKeyboardMarkup(2)
     go_back = types.InlineKeyboardButton(text='----НАЗАД----', callback_data='get_recipes_titles' + ':' + category)
     markup.add(go_back, go_home)
-    bot.send_message(user_id, f'*{title}*', parse_mode='Markdown')
-    bot.send_message(user_id, response.body, reply_markup=markup)
+    bot.send_message(user_data.user_id, f'*{title}*', parse_mode='Markdown')
+    bot.send_message(user_data.user_id, response.body, reply_markup=markup)
 
 
-def add_recipe(msg, category):
-    def __add_recipe_title(msg, category):
-        user_id, username = get_user_data(msg)
-        title = msg.text
-        bot.send_message(user_id, 'Введи текст рецепта')
-        bot.register_next_step_handler(msg, __add_recipe_body, category, title)
+def add_recipe(call, category):
+    def __add_recipe_title(call, category):
+        user_data = get_user_data(call)
+        title = user_data.text
+        bot.send_message(user_data.user_id, 'Введи текст рецепта')
+        bot.register_next_step_handler(user_data.message, __add_recipe_body, category, title)
 
-    def __add_recipe_body(msg, category, title):
-        user_id, username = get_user_data(msg)
-        response = book(user_id, username).add_recipe(category, title, msg.text)
+    def __add_recipe_body(call, category, title):
+        user_data = get_user_data(call)
+        response = book(user_data.user_id, user_data.username).add_recipe(category, title, user_data.text)
         markup = types.InlineKeyboardMarkup(2)
         go_back = types.InlineKeyboardButton(text='----НАЗАД----', callback_data='get_recipes_titles' + ':' + category)
         markup.add(go_back, go_home)
-        bot.send_message(user_id, response.body, reply_markup=markup)
+        bot.send_message(user_data.user_id, response.body, reply_markup=markup)
 
-    user_id, username = get_user_data(msg)
+    user_data = get_user_data(call)
     markup = types.InlineKeyboardMarkup(1)
     markup.add(cancel)
-    bot.send_message(user_id, 'Введи название рецепта', reply_markup=markup)
-    bot.register_next_step_handler(msg, __add_recipe_title, category)
+    bot.send_message(user_data.user_id, 'Введи название рецепта', reply_markup=markup)
+    bot.register_next_step_handler(user_data.message, __add_recipe_title, category)
 
 
 @bot.message_handler(commands=['start'])
@@ -125,40 +134,39 @@ def home(msg):
     get_categories = types.InlineKeyboardButton(text='Выбрать категорию', callback_data='get_categories')
     add_category = types.InlineKeyboardButton(text='Добавить категорию', callback_data='add_category')
     markup.add(get_categories, add_category)
-    bot.send_message(msg.chat.id, text="Привет. Я твоя книга рецептов. Выбери действие:", reply_markup=markup)
+    bot.send_message(msg.from_user.id, text="Привет. Я твоя книга рецептов. Выбери действие:", reply_markup=markup)
 
 
 @bot.callback_query_handler(lambda call: True)
 def routes(call):
     print(call.data)
-    msg = call.message
     command = call.data.split(':')[0]
 
     if command == 'go_home':
-        home(msg)
+        home(call)
 
     elif command == 'get_categories':
-        get_categories(msg)
+        get_categories(call)
 
     elif command == 'add_category':
-        add_category(msg)
+        add_category(call)
 
     elif command == 'rename_category':
         category = call.data.split(':')[1]
-        rename_category(msg, category)
+        rename_category(call, category)
 
     elif command == 'get_recipes_titles':
         category = call.data.split(':')[1]
-        get_recipes(msg, category)
+        get_recipes(call, category)
 
     elif command == 'get_recipe':
         category = call.data.split(':')[1]
         recipe_title = call.data.split(':')[2]
-        get_recipe(msg, category, recipe_title)
+        get_recipe(call, category, recipe_title)
 
     elif command == 'add_recipe':
         category = call.data.split(':')[1]
-        add_recipe(msg, category)
+        add_recipe(call, category)
 
     bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
 
