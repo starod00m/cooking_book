@@ -127,14 +127,18 @@ def add_recipe(call, category):
     bot.send_message(user_data.user_id, 'Введи название рецепта', reply_markup=markup)
     bot.register_next_step_handler(user_data.message, __add_recipe_title, category)
 
-
-@bot.message_handler(commands=['start'])
 def home(msg):
     markup = types.InlineKeyboardMarkup(2)
     get_categories = types.InlineKeyboardButton(text='Выбрать категорию', callback_data='get_categories')
     add_category = types.InlineKeyboardButton(text='Добавить категорию', callback_data='add_category')
     markup.add(get_categories, add_category)
     bot.send_message(msg.from_user.id, text="Привет. Я твоя книга рецептов. Выбери действие:", reply_markup=markup)
+
+@bot.message_handler(commands=['start'])
+def start(msg):
+    user_data = get_user_data(msg)
+    book(user_data.user_id, user_data.username).create_book()
+    home(msg)
 
 
 @bot.callback_query_handler(lambda call: True)
