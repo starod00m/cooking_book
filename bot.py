@@ -20,10 +20,10 @@ cancel = types.InlineKeyboardButton(text='----ОТМЕНА----', callback_data='
 def get_user_data(call):
     user_data = namedtuple('user_data', ['user_id', 'username', 'text', 'call_id', 'message'])
     try:
-       return user_data(call.from_user.id, call.from_user.username, call.message.text, call.id, call.message)
+        return user_data(call.from_user.id, call.from_user.username, call.message.text, call.id, call.message)
     except AttributeError:
         message = call
-        return user_data(message.from_user.id, message.from_user.username, message.text, None, message)
+        return user_data(message.chat.id, message.chat.username, message.text, None, message)
 
 
 def get_categories(call):
