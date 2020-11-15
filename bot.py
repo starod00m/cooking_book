@@ -36,9 +36,9 @@ def get_categories(call):
         markup.add(go_home)
         bot.send_message(user_data.user_id, text="Ваши категории", reply_markup=markup)
     else:
-        # markup.add(go_home)
-        # bot.send_message(user_id, f'_{response.body}_', parse_mode='Markdown',reply_markup=markup)
+        # bot.send_message(user_data.user_id, f'_{response.body}_', parse_mode='Markdown',reply_markup=markup)
         bot.answer_callback_query(callback_query_id=user_data.call_id, text=response.body)
+        # bot.delete_message(user_data.user_id, call.message.message_id)
         home(user_data.message)
 
 
@@ -123,7 +123,7 @@ def add_recipe(call, category):
 
     user_data = get_user_data(call)
     markup = types.InlineKeyboardMarkup(1)
-    markup.add(cancel)
+    # markup.add(cancel)
     bot.send_message(user_data.user_id, 'Введи название рецепта', reply_markup=markup)
     bot.register_next_step_handler(user_data.message, __add_recipe_title, category)
 
@@ -132,7 +132,8 @@ def home(msg):
     get_categories = types.InlineKeyboardButton(text='Выбрать категорию', callback_data='get_categories')
     add_category = types.InlineKeyboardButton(text='Добавить категорию', callback_data='add_category')
     markup.add(get_categories, add_category)
-    bot.send_message(msg.from_user.id, text="Привет. Я твоя книга рецептов. Выбери действие:", reply_markup=markup)
+    user_data = get_user_data(msg)
+    bot.send_message(user_data.user_id, text="Привет. Я твоя книга рецептов. Выбери действие:", reply_markup=markup)
 
 @bot.message_handler(commands=['start'])
 def start(msg):
@@ -173,6 +174,7 @@ def routes(call):
         add_recipe(call, category)
 
     bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
+    bot.delete_message(call.message.chat.id, call.message.message_id)
 
 
 if __name__ == '__main__':
