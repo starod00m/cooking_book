@@ -25,8 +25,8 @@ class CookingBook:
     def create_book(self):
         self.__write_book(self.__get_book(self.path_to_book))
 
-
-    def __get_book(self, path_to_book):
+    @staticmethod
+    def __get_book(path_to_book):
         try:
             with open(path_to_book, encoding='utf-8') as bf:
                 book = json.load(bf)
