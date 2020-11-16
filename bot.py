@@ -2,6 +2,8 @@ import telebot
 from telebot import types
 from telebot.apihelper import ApiTelegramException
 from cooking_book import CookingBook as book
+from cooking_book import Recipes
+from cooking_book import Categories
 from configparser import ConfigParser
 from collections import namedtuple
 import time
@@ -37,7 +39,7 @@ def send_notification(user_data, response, timeout: float = 1):
 def get_categories(call):
     user_data = get_user_data(call)
     markup = types.InlineKeyboardMarkup(1)
-    response = book(user_data.user_id, user_data.username).get_categories()
+    response = Categories(user_data.user_id, user_data.username).get()
     if response.status:
         for category in response.body:
             markup.add(types.InlineKeyboardButton(text=category, callback_data='get_recipes_titles' + ':' + category))
@@ -52,7 +54,7 @@ def get_categories(call):
 def add_category(call):
     def __add_category(_call):
         _user_data = get_user_data(_call)
-        response = book(_user_data.user_id, _user_data.username).add_category(_user_data.text)
+        response = Categories(_user_data.user_id, _user_data.username).add(_user_data.text)
         send_notification(_user_data, response, timeout=1)
         home(_user_data.message)
 
@@ -67,7 +69,7 @@ def rename_category(call, category):
     def __rename_category(_call, _category):
         _user_data = get_user_data(_call)
         _markup = types.InlineKeyboardMarkup(2)
-        response = book(_user_data.user_id, _user_data.username).rename_category(_category, _user_data.text)
+        response = Categories(_user_data.user_id, _user_data.username).rename(_category, _user_data.text)
         _category = _user_data.text if response.status else _category
         go_back = types.InlineKeyboardButton(text='----назад----', callback_data='get_recipes_titles' + ':' + _category)
         _markup.add(go_back, go_home)
@@ -92,7 +94,7 @@ def confirm_delete(call, category):
 
 def delete_category(call, category):
     user_data = get_user_data(call)
-    response = book(user_data.user_id, user_data.username).del_category(category)
+    response = Categories(user_data.user_id, user_data.username).delete(category)
     send_notification(user_data, response)
     routes(call, command='get_categories')
 
@@ -100,7 +102,7 @@ def delete_category(call, category):
 def get_recipes(call, category):
     user_data = get_user_data(call)
     markup = types.InlineKeyboardMarkup(3)
-    response = book(user_data.user_id, user_data.username).get_recipes_titles(category)
+    response = Recipes(user_data.user_id, user_data.username).get_titles(category)
     add_recipe_button = types.InlineKeyboardButton(text='----добавить рецепт----',
                                                    callback_data='add_recipe' + ':' + category)
     go_back = types.InlineKeyboardButton(text='----назад----', callback_data='get_categories')
@@ -127,7 +129,7 @@ def get_recipes(call, category):
 
 def get_recipe(call, category, title):
     user_data = get_user_data(call)
-    response = book(user_data.user_id, user_data.username).get_recipe(category, title)
+    response = Recipes(user_data.user_id, user_data.username).get(category, title)
     markup = types.InlineKeyboardMarkup(2)
     go_back = types.InlineKeyboardButton(text='----назад----', callback_data='get_recipes_titles' + ':' + category)
     markup.add(go_back, go_home)
@@ -144,7 +146,7 @@ def add_recipe(call, category):
 
     def __add_recipe_body(_call, _category, title):
         _user_data = get_user_data(_call)
-        response = book(_user_data.user_id, _user_data.username).add_recipe(_category, title, _user_data.text)
+        response = Recipes(_user_data.user_id, _user_data.username).add(_category, title, _user_data.text)
         send_notification(_user_data, response)
         routes(_call, command='get_recipes_titles', category=_category)
 
