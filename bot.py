@@ -1,8 +1,10 @@
 import telebot
 from telebot import types
+from telebot.apihelper import ApiTelegramException
 from cooking_book import CookingBook as book
 from configparser import ConfigParser
 from collections import namedtuple
+import time
 
 '''Читаем env.ini'''
 config = ConfigParser()
@@ -25,6 +27,10 @@ def get_user_data(call):
         message = call
         return user_data(message.chat.id, message.chat.username, message.text, None, message)
 
+def send_notification(user_data, response, timeout: float = 1):
+    message = bot.send_message(user_data.user_id, f'_{response.body}_', parse_mode='Markdown')
+    time.sleep(timeout)
+    bot.delete_message(message.chat.id, message.message_id)
 
 def get_categories(call):
     user_data = get_user_data(call)
@@ -36,9 +42,8 @@ def get_categories(call):
         markup.add(go_home)
         bot.send_message(user_data.user_id, text="Ваши категории", reply_markup=markup)
     else:
-        # bot.send_message(user_data.user_id, f'_{response.body}_', parse_mode='Markdown',reply_markup=markup)
-        bot.answer_callback_query(callback_query_id=user_data.call_id, text=response.body)
-        # bot.delete_message(user_data.user_id, call.message.message_id)
+        send_notification(user_data, response, timeout=0.5)
+        # bot.answer_callback_query(callback_query_id=user_data.call_id, text=response.body)
         home(user_data.message)
 
 
@@ -46,7 +51,7 @@ def add_category(call):
     def __add_category(call):
         user_data = get_user_data(call)
         response = book(user_data.user_id, user_data.username).add_category(user_data.text)
-        bot.send_message(user_data.user_id, response.body)
+        send_notification(user_data, response, timeout=1)
         home(user_data.message)
 
     user_data = get_user_data(call)
@@ -116,10 +121,8 @@ def add_recipe(call, category):
     def __add_recipe_body(call, category, title):
         user_data = get_user_data(call)
         response = book(user_data.user_id, user_data.username).add_recipe(category, title, user_data.text)
-        markup = types.InlineKeyboardMarkup(2)
-        go_back = types.InlineKeyboardButton(text='----НАЗАД----', callback_data='get_recipes_titles' + ':' + category)
-        markup.add(go_back, go_home)
-        bot.send_message(user_data.user_id, response.body, reply_markup=markup)
+        send_notification(user_data, response)
+        routes(call, command='get_recipes_titles', category=category)
 
     user_data = get_user_data(call)
     markup = types.InlineKeyboardMarkup(1)
@@ -143,9 +146,14 @@ def start(msg):
 
 
 @bot.callback_query_handler(lambda call: True)
-def routes(call):
-    print(call.data)
-    command = call.data.split(':')[0]
+def routes(call, command = None, category = None):
+    # print(call.data)
+    if command == None:
+        command = call.data.split(':')[0]
+        try:
+            category = call.data.split(':')[1]
+        except Exception:
+            pass
 
     if command == 'go_home':
         home(call)
@@ -157,24 +165,24 @@ def routes(call):
         add_category(call)
 
     elif command == 'rename_category':
-        category = call.data.split(':')[1]
+
         rename_category(call, category)
 
     elif command == 'get_recipes_titles':
-        category = call.data.split(':')[1]
         get_recipes(call, category)
 
     elif command == 'get_recipe':
-        category = call.data.split(':')[1]
         recipe_title = call.data.split(':')[2]
         get_recipe(call, category, recipe_title)
 
     elif command == 'add_recipe':
-        category = call.data.split(':')[1]
         add_recipe(call, category)
 
-    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
-    bot.delete_message(call.message.chat.id, call.message.message_id)
+    try:
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+    except (ApiTelegramException, AttributeError):
+        pass
 
 
 if __name__ == '__main__':
