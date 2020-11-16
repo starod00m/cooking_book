@@ -15,7 +15,7 @@ TOKEN = config['AUTH']['TOKEN']
 bot = telebot.TeleBot(TOKEN)
 
 '''Стандартные кнопки'''
-go_home = types.InlineKeyboardButton(text='----ДОМОЙ----', callback_data='go_home')
+go_home = types.InlineKeyboardButton(text='----домой----', callback_data='go_home')
 cancel = types.InlineKeyboardButton(text='----ОТМЕНА----', callback_data='go_home')
 
 
@@ -67,7 +67,7 @@ def rename_category(call, category):
         markup = types.InlineKeyboardMarkup(2)
         response = book(user_data.user_id, user_data.username).rename_category(category, user_data.text)
         category = user_data.text if response.status else category
-        go_back = types.InlineKeyboardButton(text='----НАЗАД----', callback_data='get_recipes_titles' + ':' + category)
+        go_back = types.InlineKeyboardButton(text='----назад----', callback_data='get_recipes_titles' + ':' + category)
         markup.add(go_back, go_home)
         bot.send_message(user_data.user_id, response.body, reply_markup=markup)
 
@@ -82,10 +82,10 @@ def get_recipes(call, category):
     user_data = get_user_data(call)
     markup = types.InlineKeyboardMarkup(3)
     response = book(user_data.user_id, user_data.username).get_recipes_titles(category)
-    add_recipe = types.InlineKeyboardButton(text='----ДОБАВИТЬ РЕЦЕПТ----',
+    add_recipe = types.InlineKeyboardButton(text='----добавить рецепт----',
                                             callback_data='add_recipe' + ':' + category)
-    go_back = types.InlineKeyboardButton(text='----НАЗАД----', callback_data='get_categories')
-    rename = types.InlineKeyboardButton(text='----ПЕРЕИМЕНОВАТЬ----    ', callback_data='rename_category' + ':' + category)
+    go_back = types.InlineKeyboardButton(text='----назад----', callback_data='get_categories')
+    rename = types.InlineKeyboardButton(text='----переименовать----    ', callback_data='rename_category' + ':' + category)
     if response.status:
         for recipe_title in response.body:
             markup.add(types.InlineKeyboardButton(text=recipe_title, callback_data='get_recipe' + ':'
@@ -105,7 +105,7 @@ def get_recipe(call, category, title):
     user_data = get_user_data(call)
     response = book(user_data.user_id, user_data.username).get_recipe(category, title)
     markup = types.InlineKeyboardMarkup(2)
-    go_back = types.InlineKeyboardButton(text='----НАЗАД----', callback_data='get_recipes_titles' + ':' + category)
+    go_back = types.InlineKeyboardButton(text='----назад----', callback_data='get_recipes_titles' + ':' + category)
     markup.add(go_back, go_home)
     bot.send_message(user_data.user_id, f'*{title}*', parse_mode='Markdown')
     bot.send_message(user_data.user_id, response.body, reply_markup=markup)
