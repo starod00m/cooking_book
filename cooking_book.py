@@ -3,7 +3,6 @@
 from configparser import ConfigParser
 import json
 import logging
-from collections import namedtuple
 from dataclasses import dataclass
 from typing import Any
 
@@ -62,8 +61,8 @@ class CookingBook:
             return None
 
     @staticmethod
-    def _already_exist(object, name):
-        return Response(False, f'{object} названием "{name}" уже существует')
+    def _already_exist(_object, name):
+        return Response(False, f'{_object} названием "{name}" уже существует')
 
     def _check_recipe_not_existing(self, category, title):
         if category not in self.book:
@@ -76,7 +75,7 @@ class CookingBook:
 
 class Categories(CookingBook):
 
-    def add(self, category: str) -> namedtuple:
+    def add(self, category: str) -> Response:
         if category not in self.book:
             self.book[category] = {}
             self._write_book(self.book)
@@ -86,7 +85,7 @@ class Categories(CookingBook):
             logging.error(f'cannot create category {category}')
             return self._already_exist('Категория', category)
 
-    def get(self) -> namedtuple:
+    def get(self) -> Response:
         categories = [category for category in self.book]
         logging.info(f'get list of categories {categories}')
         if len(categories) != 0:
@@ -94,7 +93,7 @@ class Categories(CookingBook):
         else:
             return Response(False, 'Категорий нет')
 
-    def delete(self, category: str) -> namedtuple:
+    def delete(self, category: str) -> Response:
         try:
             self.book.pop(category)
             self._write_book(self.book)
@@ -104,7 +103,7 @@ class Categories(CookingBook):
             logging.exception(f'cannot del category {category}')
             return CATEGORY_NOT_EXIST
 
-    def rename(self, old_name, new_name) -> namedtuple:
+    def rename(self, old_name, new_name) -> Response:
         if old_name in self.book:
             if new_name not in self.book:
                 old_category = self.book.pop(old_name)
@@ -122,7 +121,7 @@ class Categories(CookingBook):
 
 class Recipes(CookingBook):
 
-    def add(self, category, title, text) -> namedtuple:
+    def add(self, category, title, text) -> Response:
         if title not in self.book[category]:
             self.book[category][title] = text
             self._write_book(self.book)
@@ -131,7 +130,7 @@ class Recipes(CookingBook):
         else:
             return self._already_exist('Рецепт', title)
 
-    def get(self, category, title) -> namedtuple:
+    def get(self, category, title) -> Response:
         try:
             recipe = self.book[category][title]
             logging.info(f'get recipe {title} from category {category}')
@@ -140,7 +139,7 @@ class Recipes(CookingBook):
             logging.exception(f'cannot get recipe {title} from category {category}')
             return RECIPE_NOT_EXIST
 
-    def get_titles(self, category) -> namedtuple:
+    def get_titles(self, category) -> Response:
         try:
             recipes = [title for title in self.book[category]]
             logging.info(f'get list of recipes {recipes}')
@@ -152,7 +151,7 @@ class Recipes(CookingBook):
             logging.exception(f'cannot get recipes from category {category}')
             return CATEGORY_NOT_EXIST
 
-    def rename(self, category, old_recipe_title, new_recipe_title) -> namedtuple:
+    def rename(self, category, old_recipe_title, new_recipe_title) -> Response:
         check_result = self._check_recipe_not_existing(category, old_recipe_title)
         if check_result.status:
             if new_recipe_title in self.book[category]:
@@ -165,7 +164,7 @@ class Recipes(CookingBook):
         else:
             return check_result
 
-    def delete(self, category, title):
+    def delete(self, category, title) -> Response:
         check_result = self._check_recipe_not_existing(category, title)
         if check_result.status:
             del self.book[category][title]
@@ -174,7 +173,7 @@ class Recipes(CookingBook):
         else:
             return check_result
 
-    def edit(self, category, title, new_recipe):
+    def edit(self, category, title, new_recipe) -> Response:
         check_result = self._check_recipe_not_existing(category, title)
         if check_result.status:
             self.book[category][title] = new_recipe
