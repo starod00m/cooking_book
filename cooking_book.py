@@ -122,9 +122,6 @@ class Categories(CookingBook):
 class Recipes(CookingBook):
 
     def add(self, category, title, text) -> Response:
-        '''
-        Add recipe
-        '''
         if title not in self.book[category]:
             self.book[category][title] = text
             self._write_book(self.book)
@@ -134,9 +131,6 @@ class Recipes(CookingBook):
             return self._already_exist('Рецепт', title)
 
     def get(self, category, title) -> Response:
-        '''
-        Get recipe
-        '''
         try:
             recipe = self.book[category][title]
             logging.info(f'get recipe {title} from category {category}')
@@ -146,9 +140,6 @@ class Recipes(CookingBook):
             return RECIPE_NOT_EXIST
 
     def get_titles(self, category) -> Response:
-        '''
-        Get list of recipes in category
-        '''
         try:
             recipes = [title for title in self.book[category]]
             logging.info(f'get list of recipes {recipes}')
@@ -161,9 +152,6 @@ class Recipes(CookingBook):
             return CATEGORY_NOT_EXIST
 
     def rename(self, category, old_recipe_title, new_recipe_title) -> Response:
-        '''
-        Rename recipe
-        '''
         check_result = self._check_recipe_not_existing(category, old_recipe_title)
         if check_result.status:
             if new_recipe_title in self.book[category]:
@@ -177,9 +165,6 @@ class Recipes(CookingBook):
             return check_result
 
     def delete(self, category, title) -> Response:
-        '''
-        Delete recipe
-        '''
         check_result = self._check_recipe_not_existing(category, title)
         if check_result.status:
             del self.book[category][title]
@@ -189,9 +174,6 @@ class Recipes(CookingBook):
             return check_result
 
     def edit(self, category, title, new_recipe) -> Response:
-        '''
-        Edit recipe
-        '''
         check_result = self._check_recipe_not_existing(category, title)
         if check_result.status:
             self.book[category][title] = new_recipe
