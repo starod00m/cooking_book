@@ -127,14 +127,26 @@ def get_recipes(call, category):
         bot.send_message(user_data.user_id, f'_{response.body}_', parse_mode='Markdown', reply_markup=markup)
 
 
+def get_all_recipes(call):
+    user_data = get_user_data(call)
+    response = Recipes(user_data.user_id, user_data.username).get_all()
+    markup = types.InlineKeyboardMarkup(1)
+    for recipe in response.body:
+        recipe_title = recipe.split('(')[0].strip()
+        category = recipe.split('"')[1].strip()
+        markup.add(types.InlineKeyboardButton(recipe, callback_data='get_recipe' + ':'
+                                                                                   + category + ':' + recipe_title))
+    markup.add(go_home)
+    bot.send_message(user_data.user_id, text='*Все рецепты*', parse_mode='Markdown', reply_markup=markup)
+
+
 def get_recipe(call, category, title):
     user_data = get_user_data(call)
     response = Recipes(user_data.user_id, user_data.username).get(category, title)
     markup = types.InlineKeyboardMarkup(2)
     go_back = types.InlineKeyboardButton(text='----назад----', callback_data='get_recipes_titles' + ':' + category)
     markup.add(go_back, go_home)
-    bot.send_message(user_data.user_id, f'*{title}*', parse_mode='Markdown')
-    bot.send_message(user_data.user_id, response.body, reply_markup=markup)
+    bot.send_message(user_data.user_id, f'*{title}*\n\n{response.body}', reply_markup=markup, parse_mode='Markdown')
 
 
 def add_recipe(call, category):
@@ -161,7 +173,9 @@ def home(msg):
     markup = types.InlineKeyboardMarkup(2)
     get_categories_button = types.InlineKeyboardButton(text='Выбрать категорию', callback_data='get_categories')
     add_category_button = types.InlineKeyboardButton(text='Добавить категорию', callback_data='add_category')
+    get_all_recipes_button = types.InlineKeyboardButton(text='Все рецпты', callback_data='get_all_recipes')
     markup.add(get_categories_button, add_category_button)
+    markup.add(get_all_recipes_button)
     user_data = get_user_data(msg)
     bot.send_message(user_data.user_id, text="Привет. Я твоя книга рецептов. Выбери действие:", reply_markup=markup)
 
@@ -203,6 +217,9 @@ def routes(call, command=None, category=None):
 
     elif command == 'get_recipes_titles':
         get_recipes(call, category)
+
+    elif command == 'get_all_recipes':
+        get_all_recipes(call)
 
     elif command == 'get_recipe':
         recipe_title = call.data.split(':')[2]

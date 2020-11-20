@@ -139,6 +139,13 @@ class Recipes(CookingBook):
             logging.exception(f'cannot get recipe {title} from category {category}')
             return RECIPE_NOT_EXIST
 
+    def get_all(self) -> Response:
+        recipes = list()
+        for category in self.book:
+            for recipe in self.book[category]:
+                recipes.append(f'{recipe} ("{category}")')
+        return Response(True, recipes)
+
     def get_titles(self, category) -> Response:
         try:
             recipes = [title for title in self.book[category]]
