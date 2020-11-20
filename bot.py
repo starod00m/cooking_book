@@ -142,6 +142,8 @@ def get_recipe(call, category, title):
     response = Recipes(user_data.user_id, user_data.username).get(category, title)
     markup = types.InlineKeyboardMarkup(2)
     go_back = types.InlineKeyboardButton(text='----назад----', callback_data='get_recipes_titles' + ':' + category)
+    markup.add(types.InlineKeyboardButton(text='----переименовать----',
+                                          callback_data='rename_recipe' + ':' + category + ':' + title))
     markup.add(go_back, go_home)
     bot.send_message(user_data.user_id, f'*{title}*\n\n{response.body}', reply_markup=markup, parse_mode='Markdown')
 
@@ -164,6 +166,19 @@ def add_recipe(call, category):
     bot.register_next_step_handler(user_data.message, __add_recipe_title, category)
 
 
+def rename_recipe(call, category, old_title):
+    def __rename_recipe(_call):
+        _user_data = get_user_data(_call)
+        new_title = _user_data.text
+        _response = Recipes(user_data.user_id, user_data.username).rename(category, old_title, new_title)
+        send_notification(user_data, response=_response)
+        routes(_call, command='get_recipe', category=category, recipe=new_title)
+
+    user_data = get_user_data(call)
+    bot.send_message(user_data.user_id, 'Введите новое имя рецепта')
+    bot.register_next_step_handler(user_data.message, __rename_recipe)
+
+
 def home(msg):
     markup = types.InlineKeyboardMarkup(2)
     get_categories_button = types.InlineKeyboardButton(text='Выбрать категорию', callback_data='get_categories')
@@ -183,12 +198,13 @@ def start(msg):
 
 
 @bot.callback_query_handler(lambda call: True)
-def routes(call, command=None, category=None):
+def routes(call, command=None, category=None, recipe=None):
     # print(call.data)
     if command is None:
         command = call.data.split(':')[0]
         try:
             category = call.data.split(':')[1]
+            recipe = call.data.split(':')[2]
         except IndexError:
             pass
 
@@ -217,11 +233,13 @@ def routes(call, command=None, category=None):
         get_all_recipes(call)
 
     elif command == 'get_recipe':
-        recipe_title = call.data.split(':')[2]
-        get_recipe(call, category, recipe_title)
+        get_recipe(call, category, recipe)
 
     elif command == 'add_recipe':
         add_recipe(call, category)
+
+    elif command == 'rename_recipe':
+        rename_recipe(call, category, recipe)
 
     try:
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
