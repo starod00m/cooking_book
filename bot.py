@@ -34,9 +34,9 @@ class BaseBot:
         self.markup = types.InlineKeyboardMarkup()
 
     def home(self, msg):
-        get_categories_button = types.InlineKeyboardButton(text='Выбрать категорию', callback_data='get_categories')
-        add_category_button = types.InlineKeyboardButton(text='Добавить категорию', callback_data='add_category')
-        get_all_recipes_button = types.InlineKeyboardButton(text='Все рецпты', callback_data='get_all_recipes')
+        get_categories_button = self.button(text='Выбрать категорию', callback_data='get_categories')
+        add_category_button = self.button(text='Добавить категорию', callback_data='add_category')
+        get_all_recipes_button = self.button(text='Все рецпты', callback_data='get_all_recipes')
         self.markup.add(get_categories_button, add_category_button)
         self.markup.add(get_all_recipes_button)
         user_data = self.get_user_data(msg)
@@ -58,6 +58,10 @@ class BaseBot:
         time.sleep(timeout)
         bot.delete_message(message.chat.id, message.message_id)
 
+    @staticmethod
+    def button(text, callback_data):
+        return types.InlineKeyboardButton(text=text, callback_data=callback_data)
+
 
 class Categories(BaseBot):
 
@@ -66,7 +70,7 @@ class Categories(BaseBot):
         if response.status:
             for category in response.body:
                 self.markup.add(
-                    types.InlineKeyboardButton(text=category, callback_data='get_recipes_titles' + ':' + category))
+                    self.button(text=category, callback_data='get_recipes_titles' + ':' + category))
             self.markup.add(go_home)
             bot.send_message(self.id, text="Ваши категории", reply_markup=self.markup)
         else:
@@ -88,8 +92,8 @@ class Categories(BaseBot):
             _user_data = self.get_user_data(_call)
             response = book_categories(_user_data.user_id, _user_data.username).rename(_category, _user_data.text)
             _category = _user_data.text if response.status else _category
-            go_back = types.InlineKeyboardButton(text='----назад----',
-                                                 callback_data='get_recipes_titles' + ':' + _category)
+            go_back = self.button(text='----назад----',
+                                  callback_data='get_recipes_titles' + ':' + _category)
             self.markup.add(go_back, go_home)
             bot.send_message(_user_data.user_id, response.body, reply_markup=self.markup)
 
@@ -97,8 +101,8 @@ class Categories(BaseBot):
         bot.register_next_step_handler(self.message, __rename, self.category)
 
     def confirm_delete(self):
-        yes = types.InlineKeyboardButton(text='----да----', callback_data='delete_confirmed' + ':' + self.category)
-        no = types.InlineKeyboardButton(text='----нет----', callback_data='get_recipes_titles' + ':' + self.category)
+        yes = self.button(text='----да----', callback_data='delete_confirmed' + ':' + self.category)
+        no = self.button(text='----нет----', callback_data='get_recipes_titles' + ':' + self.category)
         self.markup.add(no, yes)
         bot.send_message(self.id, text=f'Вы уверены, что хотите удалить категорию "{self.category}"?',
                          reply_markup=self.markup)
@@ -113,17 +117,17 @@ class Recipes(BaseBot):
 
     def get_from_category(self):
         response = book_recipes(self.id, self.username).get_titles(self.category)
-        add_recipe_button = types.InlineKeyboardButton(text='----добавить рецепт----',
-                                                       callback_data='add_recipe' + ':' + self.category)
-        go_back = types.InlineKeyboardButton(text='----назад----', callback_data='get_categories')
-        rename_category_button = types.InlineKeyboardButton(text='----переименовать----    ',
-                                                            callback_data='rename_category' + ':' + self.category)
-        delete_category_button = types.InlineKeyboardButton(text='----удалить----',
-                                                            callback_data='delete_category' + ':' + self.category)
+        add_recipe_button = self.button(text='----добавить рецепт----',
+                                        callback_data='add_recipe' + ':' + self.category)
+        go_back = self.button(text='----назад----', callback_data='get_categories')
+        rename_category_button = self.button(text='----переименовать----    ',
+                                             callback_data='rename_category' + ':' + self.category)
+        delete_category_button = self.button(text='----удалить----',
+                                             callback_data='delete_category' + ':' + self.category)
 
         if response.status:
             for recipe_title in response.body:
-                self.markup.add(types.InlineKeyboardButton(
+                self.markup.add(self.button(
                     text=recipe_title, callback_data='get_recipe' + ':' + self.category + ':' + recipe_title))
             self.markup.add(add_recipe_button)
             self.markup.add(rename_category_button, delete_category_button)
@@ -141,17 +145,18 @@ class Recipes(BaseBot):
         for recipe in response.body:
             recipe_title = recipe.split('(')[0].strip()
             category = recipe.split('"')[1].strip()
-            self.markup.add(types.InlineKeyboardButton(recipe,
-                                                       callback_data='get_recipe' + ':' + category + ':' + recipe_title))
+            self.markup.add(self.button(recipe,
+                                        callback_data='get_recipe' + ':' + category + ':' + recipe_title))
         self.markup.add(go_home)
         bot.send_message(self.id, text='*Все рецепты*', parse_mode='Markdown', reply_markup=self.markup)
 
     def get(self):
         response = book_recipes(self.id, self.username).get(self.category, self.recipe_title)
-        go_back = types.InlineKeyboardButton(text='----назад----',
-                                             callback_data='get_recipes_titles' + ':' + self.category)
-        self.markup.add(types.InlineKeyboardButton(
-            text='----переименовать----', callback_data='rename_recipe' + ':' + self.category + ':' + self.recipe_title))
+        go_back = self.button(text='----назад----',
+                              callback_data='get_recipes_titles' + ':' + self.category)
+        self.markup.add(self.button(
+            text='----переименовать----',
+            callback_data='rename_recipe' + ':' + self.category + ':' + self.recipe_title))
         self.markup.add(go_back, go_home)
         bot.send_message(self.id, f'*{self.recipe_title}*\n\n{response.body}',
                          reply_markup=self.markup, parse_mode='Markdown')
