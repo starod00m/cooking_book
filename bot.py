@@ -76,9 +76,7 @@ def rename_category(call, category):
         bot.send_message(_user_data.user_id, response.body, reply_markup=_markup)
 
     user_data = get_user_data(call)
-    markup = types.InlineKeyboardMarkup(1)
-    # markup.add(cancel)
-    bot.send_message(user_data.user_id, 'Введите новое имя категории', reply_markup=markup)
+    bot.send_message(user_data.user_id, 'Введите новое имя категории')
     bot.register_next_step_handler(user_data.message, __rename_category, category)
 
 
@@ -134,8 +132,7 @@ def get_all_recipes(call):
     for recipe in response.body:
         recipe_title = recipe.split('(')[0].strip()
         category = recipe.split('"')[1].strip()
-        markup.add(types.InlineKeyboardButton(recipe, callback_data='get_recipe' + ':'
-                                                                                   + category + ':' + recipe_title))
+        markup.add(types.InlineKeyboardButton(recipe, callback_data='get_recipe' + ':' + category + ':' + recipe_title))
     markup.add(go_home)
     bot.send_message(user_data.user_id, text='*Все рецепты*', parse_mode='Markdown', reply_markup=markup)
 
@@ -163,9 +160,7 @@ def add_recipe(call, category):
         routes(_call, command='get_recipes_titles', category=_category)
 
     user_data = get_user_data(call)
-    markup = types.InlineKeyboardMarkup(1)
-    # markup.add(cancel)
-    bot.send_message(user_data.user_id, 'Введи название рецепта', reply_markup=markup)
+    bot.send_message(user_data.user_id, 'Введи название рецепта')
     bot.register_next_step_handler(user_data.message, __add_recipe_title, category)
 
 
