@@ -18,7 +18,6 @@ bot = telebot.TeleBot(TOKEN)
 
 '''Стандартные кнопки'''
 go_home = types.InlineKeyboardButton(text='----домой----', callback_data='go_home')
-cancel = types.InlineKeyboardButton(text='----ОТМЕНА----', callback_data='go_home')
 
 
 class BaseBot:
@@ -52,9 +51,8 @@ class BaseBot:
             message = call
             return user_data(message.chat.id, message.chat.username, message.text, None, message)
 
-    @staticmethod
-    def send_notification(_id, response, timeout: float = 1):
-        message = bot.send_message(_id, f'_{response.body}_', parse_mode='Markdown')
+    def send_notification(self, response, timeout: float = 1):
+        message = bot.send_message(self.id, f'_{response.body}_', parse_mode='Markdown')
         time.sleep(timeout)
         bot.delete_message(message.chat.id, message.message_id)
 
@@ -70,30 +68,30 @@ class Categories(BaseBot):
         if response.status:
             for category in response.body:
                 self.markup.add(
-                    self.button(text=category, callback_data='get_recipes_titles' + ':' + category))
+                    self.button(text=category, callback_data='get_from_category' + ':' + category))
             self.markup.add(go_home)
             bot.send_message(self.id, text="Ваши категории", reply_markup=self.markup)
         else:
-            self.send_notification(self.id, response, timeout=0.8)
+            self.send_notification(response, timeout=0.8)
             self.home(self.message)
 
     def add(self):
-        def __add(_call):
-            _user_data = self.get_user_data(_call)
+        def __add(message):
+            _user_data = self.get_user_data(message)
             response = book_categories(_user_data.user_id, _user_data.username).add(_user_data.text)
-            self.send_notification(_user_data.user_id, response, timeout=1)
+            self.send_notification(response, timeout=1)
             self.home(_user_data.message)
 
         bot.send_message(self.id, 'Введи название категории')
         bot.register_next_step_handler(self.message, __add)
 
     def rename(self):
-        def __rename(_call, _category):
-            _user_data = self.get_user_data(_call)
+        def __rename(message, _category):
+            _user_data = self.get_user_data(message)
             response = book_categories(_user_data.user_id, _user_data.username).rename(_category, _user_data.text)
             _category = _user_data.text if response.status else _category
             go_back = self.button(text='----назад----',
-                                  callback_data='get_recipes_titles' + ':' + _category)
+                                  callback_data='get_from_category' + ':' + _category)
             self.markup.add(go_back, go_home)
             bot.send_message(_user_data.user_id, response.body, reply_markup=self.markup)
 
@@ -102,14 +100,14 @@ class Categories(BaseBot):
 
     def confirm_delete(self):
         yes = self.button(text='----да----', callback_data='delete_confirmed' + ':' + self.category)
-        no = self.button(text='----нет----', callback_data='get_recipes_titles' + ':' + self.category)
+        no = self.button(text='----нет----', callback_data='get_from_category' + ':' + self.category)
         self.markup.add(no, yes)
         bot.send_message(self.id, text=f'Вы уверены, что хотите удалить категорию "{self.category}"?',
                          reply_markup=self.markup)
 
     def delete(self):
         response = book_categories(self.id, self.username).delete(self.category)
-        self.send_notification(self.id, response)
+        self.send_notification(response)
         routes(self.call, command='get_categories')
 
 
@@ -153,10 +151,15 @@ class Recipes(BaseBot):
     def get(self):
         response = book_recipes(self.id, self.username).get(self.category, self.recipe_title)
         go_back = self.button(text='----назад----',
-                              callback_data='get_recipes_titles' + ':' + self.category)
-        self.markup.add(self.button(
-            text='----переименовать----',
-            callback_data='rename_recipe' + ':' + self.category + ':' + self.recipe_title))
+                              callback_data='get_from_category' + ':' + self.category)
+        rename = self.button(text='----переименовать----',
+                             callback_data='rename_recipe' + ':' + self.category + ':' + self.recipe_title)
+        edit = self.button(text='----редактировать----',
+                             callback_data='edit_recipe' + ':' + self.category + ':' + self.recipe_title)
+        delete = self.button(text='----удалить----',
+                             callback_data='delete_recipe' + ':' + self.category + ':' + self.recipe_title)
+        self.markup.add(rename, delete)
+        self.markup.add(edit)
         self.markup.add(go_back, go_home)
         bot.send_message(self.id, f'*{self.recipe_title}*\n\n{response.body}',
                          reply_markup=self.markup, parse_mode='Markdown')
@@ -171,23 +174,49 @@ class Recipes(BaseBot):
         def __add_recipe_body(_call, title):
             _user_data = self.get_user_data(_call)
             response = book_recipes(self.id, self.username).add(self.category, title, _user_data.text)
-            self.send_notification(self.id, response)
-            routes(_call, command='get_recipes_titles', category=self.category)
+            self.send_notification(response)
+            routes(_call, command='get_from_category', category=self.category)
 
         bot.send_message(self.id, 'Введите название рецепта')
         bot.register_next_step_handler(self.message, __add_recipe_title)
 
     def rename(self):
-        def __rename_recipe(_call):
-            _user_data = self.get_user_data(_call)
+        def __rename_recipe(message):
+            _user_data = self.get_user_data(message)
             new_title = _user_data.text
             _response = book_recipes(self.id, self.username).rename(self.category, self.recipe_title, new_title)
             recipe = new_title if _response.status else self.recipe_title
-            self.send_notification(self.id, response=_response)
-            routes(_call, command='get_recipe', category=self.category, recipe=recipe)
+            self.send_notification(_response)
+            routes(message, command='get_recipe', category=self.category, recipe=recipe)
 
         bot.send_message(self.id, 'Введите новое имя рецепта')
         bot.register_next_step_handler(self.message, __rename_recipe)
+
+    def edit(self):
+        def __edit(message):
+            user_data = self.get_user_data(message)
+            response = book_recipes(self.id, self.username).edit(self.category, self.recipe_title, user_data.text)
+            self.send_notification(response)
+            routes(message, command='get_recipe', category=self.category, recipe=self.recipe_title)
+
+        recipe = book_recipes(self.id, self.username).get(self.category, self.recipe_title).body
+        bot.send_message(self.id, text=recipe)
+        bot.send_message(self.id, text='Введите текст рецпета')
+        bot.register_next_step_handler(self.message, __edit)
+
+    def delete(self):
+        response = book_recipes(self.id, self.username).delete(self.category, self.recipe_title)
+        self.send_notification(response)
+        routes(self.call, command='get_from_category', category=self.category)
+
+    def confirm_delete(self):
+        yes = self.button(text='----да----',
+                          callback_data='delete_confirmed' + ':' + self.category + ':' + self.recipe_title)
+        no = self.button(text='----нет----',
+                         callback_data='get_recipe' + ':' + self.category + ':' + self.recipe_title)
+        self.markup.add(no, yes)
+        bot.send_message(self.id, text=f'Вы уверены, что хотите удалить рецепт "{self.recipe_title}"?',
+                         reply_markup=self.markup)
 
 
 @bot.message_handler(commands=['start'])
@@ -224,9 +253,12 @@ def routes(call, command=None, category=None, recipe=None):
         Categories(call, category).confirm_delete()
 
     elif command == 'delete_confirmed':
-        Categories(call, category).delete()
+        if recipe is not None:
+            Recipes(call, category, recipe).delete()
+        else:
+            Categories(call, category).delete()
 
-    elif command == 'get_recipes_titles':
+    elif command == 'get_from_category':
         Recipes(call, category).get_from_category()
 
     elif command == 'get_all_recipes':
@@ -240,6 +272,12 @@ def routes(call, command=None, category=None, recipe=None):
 
     elif command == 'rename_recipe':
         Recipes(call, category, recipe).rename()
+
+    elif command == 'edit_recipe':
+        Recipes(call, category, recipe).edit()
+
+    elif command == 'delete_recipe':
+        Recipes(call, category, recipe).confirm_delete()
 
     try:
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)

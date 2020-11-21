@@ -153,7 +153,7 @@ class Recipes(CookingBook):
             if len(recipes) != 0:
                 return Response(True, sorted(recipes))
             else:
-                return Response(False, 'Тут пока нет рецептов')
+                return Response(False, f'В категории "{category}" пока нет рецептов')
         except KeyError:
             logging.exception(f'cannot get recipes from category {category}')
             return CATEGORY_NOT_EXIST
