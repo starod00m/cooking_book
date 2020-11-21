@@ -1,23 +1,9 @@
-import telebot
-from telebot import types
-from telebot.apihelper import ApiTelegramException
+import time
+from collections import namedtuple
+from configparser import ConfigParser
+from cooking_book import Categories as book_categories
 from cooking_book import CookingBook as book
 from cooking_book import Recipes as book_recipes
-from cooking_book import Categories as book_categories
-from configparser import ConfigParser
-from collections import namedtuple
-import time
-
-'''Читаем env.ini'''
-config = ConfigParser()
-config.read('env.ini')
-TOKEN = config['AUTH']['TOKEN']
-
-'''Инициализирум бота'''
-bot = telebot.TeleBot(TOKEN)
-
-'''Стандартные кнопки'''
-go_home = types.InlineKeyboardButton(text='----домой----', callback_data='go_home')
 
 
 class BaseBot:
@@ -32,14 +18,13 @@ class BaseBot:
         self.recipe_title = title
         self.markup = types.InlineKeyboardMarkup()
 
-    def home(self, msg):
+    def home(self):
         get_categories_button = self.button(text='Выбрать категорию', callback_data='get_categories')
         add_category_button = self.button(text='Добавить категорию', callback_data='add_category')
         get_all_recipes_button = self.button(text='Все рецпты', callback_data='get_all_recipes')
         self.markup.add(get_categories_button, add_category_button)
         self.markup.add(get_all_recipes_button)
-        user_data = self.get_user_data(msg)
-        bot.send_message(user_data.user_id, text="Привет. Я твоя книга рецептов. Выбери действие:",
+        bot.send_message(self.id, text="Привет. Я твоя книга рецептов. Выбери действие:",
                          reply_markup=self.markup)
 
     def get_user_data(self, call=None):
@@ -70,17 +55,17 @@ class Categories(BaseBot):
                 self.markup.add(
                     self.button(text=category, callback_data='get_from_category' + ':' + category))
             self.markup.add(go_home)
-            bot.send_message(self.id, text="Ваши категории", reply_markup=self.markup)
+            bot.send_message(self.id, text="*Ваши категории*", reply_markup=self.markup, parse_mode='Markdown')
         else:
             self.send_notification(response, timeout=0.8)
-            self.home(self.message)
+            self.home()
 
     def add(self):
         def __add(message):
             _user_data = self.get_user_data(message)
             response = book_categories(_user_data.user_id, _user_data.username).add(_user_data.text)
             self.send_notification(response, timeout=1)
-            self.home(_user_data.message)
+            self.home()
 
         bot.send_message(self.id, 'Введи название категории')
         bot.register_next_step_handler(self.message, __add)
@@ -155,7 +140,7 @@ class Recipes(BaseBot):
         rename = self.button(text='----переименовать----',
                              callback_data='rename_recipe' + ':' + self.category + ':' + self.recipe_title)
         edit = self.button(text='----редактировать----',
-                             callback_data='edit_recipe' + ':' + self.category + ':' + self.recipe_title)
+                           callback_data='edit_recipe' + ':' + self.category + ':' + self.recipe_title)
         delete = self.button(text='----удалить----',
                              callback_data='delete_recipe' + ':' + self.category + ':' + self.recipe_title)
         self.markup.add(rename, delete)
@@ -169,7 +154,7 @@ class Recipes(BaseBot):
             _user_data = self.get_user_data(_call)
             title = _user_data.text
             bot.send_message(self.id, 'Введи текст рецепта')
-            bot.register_next_step_handler(_user_data.message, __add_recipe_body, self.category, title)
+            bot.register_next_step_handler(_user_data.message, __add_recipe_body, title)
 
         def __add_recipe_body(_call, title):
             _user_data = self.get_user_data(_call)
@@ -219,72 +204,88 @@ class Recipes(BaseBot):
                          reply_markup=self.markup)
 
 
-@bot.message_handler(commands=['start'])
-def start(msg):
-    user_data = BaseBot(msg).get_user_data()
-    book(user_data.user_id, user_data.username).create_book()
-    BaseBot(msg).home(msg)
+if __name__ == '__main__':
+    import telebot
+    from telebot import types
+    from telebot.apihelper import ApiTelegramException
+
+    '''Читаем env.ini'''
+    config = ConfigParser()
+    config.read('env.ini')
+    TOKEN = config['AUTH']['TOKEN']
+
+    '''Инициализирум бота'''
+    bot = telebot.TeleBot(TOKEN)
+
+    '''Стандартные кнопки'''
+    go_home = BaseBot.button(text='----домой----', callback_data='go_home')
 
 
-@bot.callback_query_handler(lambda call: True)
-def routes(call, command=None, category=None, recipe=None):
-    # print(call.data)
-    if command is None:
-        command = call.data.split(':')[0]
+    @bot.message_handler(commands=['start'])
+    def start(msg):
+        user_data = BaseBot(msg).get_user_data()
+        book(user_data.user_id, user_data.username).create_book()
+        BaseBot(msg).home()
+
+
+    @bot.callback_query_handler(lambda call: True)
+    def routes(call, command=None, category=None, recipe=None):
+        # print(call.data)
+        if command is None:
+            command = call.data.split(':')[0]
+            try:
+                category = call.data.split(':')[1]
+                recipe = call.data.split(':')[2]
+            except IndexError:
+                pass
+
+        if command == 'go_home':
+            BaseBot(call).home()
+
+        elif command == 'get_categories':
+            Categories(call).get()
+
+        elif command == 'add_category':
+            Categories(call).add()
+
+        elif command == 'rename_category':
+            Categories(call, category).rename()
+
+        elif command == 'delete_category':
+            Categories(call, category).confirm_delete()
+
+        elif command == 'delete_confirmed':
+            if recipe is not None:
+                Recipes(call, category, recipe).delete()
+            else:
+                Categories(call, category).delete()
+
+        elif command == 'get_from_category':
+            Recipes(call, category).get_from_category()
+
+        elif command == 'get_all_recipes':
+            Recipes(call).get_all()
+
+        elif command == 'get_recipe':
+            Recipes(call, category, recipe).get()
+
+        elif command == 'add_recipe':
+            Recipes(call, category).add()
+
+        elif command == 'rename_recipe':
+            Recipes(call, category, recipe).rename()
+
+        elif command == 'edit_recipe':
+            Recipes(call, category, recipe).edit()
+
+        elif command == 'delete_recipe':
+            Recipes(call, category, recipe).confirm_delete()
+
         try:
-            category = call.data.split(':')[1]
-            recipe = call.data.split(':')[2]
-        except IndexError:
+            bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
+            bot.delete_message(call.message.chat.id, call.message.message_id)
+        except (ApiTelegramException, AttributeError):
             pass
 
-    if command == 'go_home':
-        BaseBot(call).home(call)
 
-    elif command == 'get_categories':
-        Categories(call).get()
-
-    elif command == 'add_category':
-        Categories(call).add()
-
-    elif command == 'rename_category':
-        Categories(call, category).rename()
-
-    elif command == 'delete_category':
-        Categories(call, category).confirm_delete()
-
-    elif command == 'delete_confirmed':
-        if recipe is not None:
-            Recipes(call, category, recipe).delete()
-        else:
-            Categories(call, category).delete()
-
-    elif command == 'get_from_category':
-        Recipes(call, category).get_from_category()
-
-    elif command == 'get_all_recipes':
-        Recipes(call).get_all()
-
-    elif command == 'get_recipe':
-        Recipes(call, category, recipe).get()
-
-    elif command == 'add_recipe':
-        Recipes(call, category).add()
-
-    elif command == 'rename_recipe':
-        Recipes(call, category, recipe).rename()
-
-    elif command == 'edit_recipe':
-        Recipes(call, category, recipe).edit()
-
-    elif command == 'delete_recipe':
-        Recipes(call, category, recipe).confirm_delete()
-
-    try:
-        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
-        bot.delete_message(call.message.chat.id, call.message.message_id)
-    except (ApiTelegramException, AttributeError):
-        pass
-
-
-if __name__ == '__main__':
     bot.polling(none_stop=True)
