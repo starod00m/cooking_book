@@ -21,7 +21,7 @@ class BaseBot:
     def home(self):
         get_categories_button = self.button(text='Выбрать категорию', callback_data='get_categories')
         add_category_button = self.button(text='Добавить категорию', callback_data='add_category')
-        get_all_recipes_button = self.button(text='Все рецпты', callback_data='get_all_recipes')
+        get_all_recipes_button = self.button(text='Все рецепты', callback_data='get_all_recipes')
         self.markup.add(get_categories_button, add_category_button)
         self.markup.add(get_all_recipes_button)
         bot.send_message(self.id, text="Привет. Я твоя книга рецептов. Выбери действие:",
